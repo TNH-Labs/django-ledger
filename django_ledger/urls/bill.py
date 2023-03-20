@@ -1,0 +1,68 @@
+from django.urls import path
+
+from django_ledger import views
+from django_ledger.views import CSVImportView
+
+# from django_ledger.views import UploadBillView
+
+urlpatterns = [
+    path('<slug:entity_slug>/latest/',
+         views.BillModelListView.as_view(),
+         name='bill-list'),
+    path('import-csv/', CSVImportView.as_view(), name='import_csv'),
+    path('<slug:entity_slug>/year/<int:year>/',
+         views.BillModelYearListView.as_view(),
+         name='bill-list-year'),
+    path('<slug:entity_slug>/month/<int:year>/<int:month>/',
+         views.BillModelMonthListView.as_view(),
+         name='bill-list-month'),
+    path('<slug:entity_slug>/create/',
+         views.BillModelCreateView.as_view(),
+         name='bill-create'),
+    # path('upload_bill/', UploadBillView.as_view(), name='upload_bill'),
+
+    path('<slug:entity_slug>/create/purchase-order/<uuid:po_pk>/',
+         views.BillModelCreateView.as_view(for_purchase_order=True),
+         name='bill-create-po'),
+    path('<slug:entity_slug>/create/estimate/<uuid:ce_pk>/',
+         views.BillModelCreateView.as_view(for_estimate=True),
+         name='bill-create-estimate'),
+    path('<slug:entity_slug>/detail/<uuid:bill_pk>/',
+         views.BillModelDetailView.as_view(),
+         name='bill-detail'),
+    path('<slug:entity_slug>/update/<uuid:bill_pk>/',
+         views.BillModelUpdateView.as_view(),
+         name='bill-update'),
+    path('<slug:entity_slug>/update/<uuid:bill_pk>/items/',
+         views.BillModelUpdateView.as_view(action_update_items=True),
+         name='bill-update-items'),
+
+    # Actions...
+    path('<slug:entity_slug>/actions/<uuid:bill_pk>/mark-as-draft/',
+         views.BillModelActionMarkAsDraftView.as_view(),
+         name='bill-action-mark-as-draft'),
+    path('<slug:entity_slug>/actions/<uuid:bill_pk>/mark-as-review/',
+         views.BillModelActionMarkAsInReviewView.as_view(),
+         name='bill-action-mark-as-review'),
+    path('<slug:entity_slug>/actions/<uuid:bill_pk>/mark-as-approved/',
+         views.BillModelActionMarkAsApprovedView.as_view(),
+         name='bill-action-mark-as-approved'),
+    path('<slug:entity_slug>/actions/<uuid:bill_pk>/mark-as-paid/',
+         views.BillModelActionMarkAsPaidView.as_view(),
+         name='bill-action-mark-as-paid'),
+    path('<slug:entity_slug>/actions/<uuid:bill_pk>/mark-as-delete/',
+         views.BillModelActionDeleteView.as_view(),
+         name='bill-action-mark-as-delete'),
+    path('<slug:entity_slug>/actions/<uuid:bill_pk>/mark-as-void/',
+         views.BillModelActionVoidView.as_view(),
+         name='bill-action-mark-as-void'),
+    path('<slug:entity_slug>/actions/<uuid:bill_pk>/lock-ledger/',
+         views.BillModelActionLockLedgerView.as_view(),
+         name='bill-action-lock-ledger'),
+    path('<slug:entity_slug>/actions/<uuid:bill_pk>/unlock-ledger/',
+         views.BillModelActionUnlockLedgerView.as_view(),
+         name='bill-action-unlock-ledger'),
+    path('<slug:entity_slug>/actions/<uuid:bill_pk>/force-migration/',
+         views.BillModelActionForceMigrateView.as_view(),
+         name='bill-action-force-migrate'),
+]

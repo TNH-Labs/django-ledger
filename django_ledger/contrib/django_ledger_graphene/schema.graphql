@@ -1,0 +1,107 @@
+type Query {
+  allCoa(slug: String!): [ChartOfAccountsModelListNode]
+  allEntityList: [EntityModelListNode]
+  visibleEntityList: [EntityModelListNode]
+  hiddenEntityList: [EntityModelListNode]
+  managedEntityList: [EntityModelListNode]
+  adminEntityList: [EntityModelListNode]
+  entityDetailByUuid(uuid: String!): EntityModelDetailNode
+  entityDetailBySlug(slug: String!): EntityModelDetailNode
+}
+
+type ChartOfAccountsModelListNode implements Node {
+  slug: String!
+  name: String
+  uuid: UUID!
+  locked: Boolean!
+
+  """The ID of the object"""
+  id: ID!
+}
+
+"""An object with an ID"""
+interface Node {
+  """The ID of the object"""
+  id: ID!
+}
+
+"""
+Leverages the internal Python implementation of UUID (uuid.UUID) to provide native UUID objects
+in fields, resolvers and input.
+"""
+scalar UUID
+
+type EntityModelListNode implements Node {
+  slug: String!
+  created: DateTime!
+  updated: DateTime
+  uuid: UUID!
+  name: String!
+  hidden: Boolean!
+  accrualMethod: Boolean!
+  fyStartMonth: DjangoLedgerEntityModelFyStartMonthChoices!
+  picture: String
+
+  """The ID of the object"""
+  id: ID!
+  isAdmin: Boolean
+}
+
+"""
+The `DateTime` scalar type represents a DateTime
+value as specified by
+[iso8601](https://en.wikipedia.org/wiki/ISO_8601).
+"""
+scalar DateTime
+
+enum DjangoLedgerEntityModelFyStartMonthChoices {
+  """January"""
+  A_1
+
+  """February"""
+  A_2
+
+  """March"""
+  A_3
+
+  """April"""
+  A_4
+
+  """May"""
+  A_5
+
+  """June"""
+  A_6
+
+  """July"""
+  A_7
+
+  """August"""
+  A_8
+
+  """September"""
+  A_9
+
+  """October"""
+  A_10
+
+  """November"""
+  A_11
+
+  """December"""
+  A_12
+}
+
+type EntityModelDetailNode {
+  slug: String!
+  created: DateTime!
+  updated: DateTime
+  uuid: UUID!
+  name: String!
+  hidden: Boolean!
+  accrualMethod: Boolean!
+  fyStartMonth: DjangoLedgerEntityModelFyStartMonthChoices!
+  picture: String
+  defaultCoa: ChartOfAccountsModelListNode
+  isAdmin: Boolean
+}

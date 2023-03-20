@@ -1,0 +1,38 @@
+{
+  "dependencies": {
+    "@iconify/iconify": "^1.0.7",
+    "@types/chart.js": "^2.9.31",
+    "@types/lodash": "^4.14.168",
+    "animate.css": "^4.1.1",
+    "axios": "^0.21.3",
+    "bulma": "^0.9.3",
+    "bulmaswatch": "^0.8.1",
+    "chart.js": "^2.9.4",
+    "json-schema": "^0.4.0",
+    "pikaday": "^1.8.2",
+    "scss-tokenizer": "^0.4.3",
+    "trim-newlines": "^4.0.2",
+    "vue": "^2.6.12",
+    "vue-class-component": "^7.2.6"
+  },
+  "devDependencies": {
+    "css-loader": "^5.2.2",
+    "file-loader": "^6.2.0",
+    "less": "^4.1.1",
+    "less-loader": "^8.0.0",
+    "node-sass": "^7.0.1",
+    "sass-loader": "^11.0.1",
+    "style-loader": "^2.0.0",
+    "ts-loader": "^8.1.0",
+    "typescript": "^4.2.4",
+    "url-loader": "^4.1.1",
+    "webpack": "^5.33.2",
+    "webpack-cli": "^4.6.0"
+  },
+  "scripts": {
+    "build": "webpack",
+    "watch": "webpack --watch"
+  },
+  "main": "../django_ledger/static/django_ledger/bundle/djetler.bundle.js",
+  "packageManager": "yarn@3.4.1"
+}

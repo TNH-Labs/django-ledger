@@ -1,0 +1,44 @@
+{% extends 'django_ledger/layouts/content_layout_1.html' %}
+{% load i18n %}
+{% load static %}
+{% load django_ledger %}
+
+{% block view_content %}
+
+
+    <div class="box">
+        <div class="columns">
+            <div class="column">
+                <a class="button is-primary is-outlined is-small"
+                   href="{% url 'django_ledger:customer-create' entity_slug=view.kwargs.entity_slug %}">
+                    <span class="icon is-large has-text-success">{% icon 'carbon:add-alt' 24 %}</span>
+                    <span>{% trans 'New Customer' %}</span>
+                </a>
+                <div style="border-radius: 15px;border: 1px solid lightgray;margin-top: 4%;">
+                    <div class="column"><h3>Add a .CSV file to add a list of Customers</h3></div>
+                    
+                    <form method="post" enctype="multipart/form-data" action="{% url 'django_ledger:ImportCSV_Customer' %}">
+                        {% csrf_token %}
+                        <div class="column">
+                            <label for="csv_file">Select a CSV file:</label>
+                            <input type="file" name="csv_file" accept=".csv">
+                        </div>
+                        <div class="column">
+                            <label for="entity">Select an entity:</label>
+                            <select name="entity" id="entity" class="button is-primary is-outlined is-small">
+                                {% for entity in extra_content.entity_list %}
+                                    <option value="{{ entity.name }}">{{ entity.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="button is-primary is-outlined is-small" type="submit">Submit</button>
+                        </div>
+                    </form>
+                </div>  
+            </div>
+        </div>
+
+        {% customer_table %}
+
+    </div>
+    </div>
+{% endblock %}

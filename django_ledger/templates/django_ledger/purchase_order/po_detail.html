@@ -1,0 +1,60 @@
+{% extends 'django_ledger/layouts/content_layout_1.html' %}
+{% load trans from i18n %}
+{% load static %}
+{% load django_ledger %}
+
+{% block view_content %}
+    <div class="columns">
+        <div class="column is-4">
+            <div class="columns is-multiline">
+                <div class="column is-12">
+                    {% include 'django_ledger/purchase_order/includes/card_po.html' with po_model=po_model entity_slug=view.kwargs.entity_slug style='po-detail' %}
+                </div>
+                <div class="column is-12">
+                    <a class="button is-info is-fullwidth is-outlined"
+                       href="{% url 'django_ledger:po-list' entity_slug=view.kwargs.entity_slug %}">
+                        {% trans 'PO List' %}
+                    </a>
+                    <a class="button is-primary is-fullwidth is-outlined mt-2"
+                       href="{% url 'django_ledger:entity-dashboard' entity_slug=view.kwargs.entity_slug %}">
+                        {% trans 'Go To Dashboard' %}
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="column is-8">
+
+            <nav class="level">
+                <div class="level-item has-text-centered">
+                    <div>
+                        <p class="heading">{% trans 'PO Amount' %}:
+                        <p class="title">
+                            {% currency_symbol %}{{ po_model.po_amount | absolute | currency_format }}</p>
+                    </div>
+                </div>
+                <div class="level-item has-text-centered">
+                    <div>
+                        <p class="heading">{% trans 'Amount Received' %}:</p>
+                        <p class="title has-text-success">
+                            {% currency_symbol %}{{ po_model.po_amount_received  | currency_format }}</p>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="columns is-multiline">
+                <div class="column is-12">
+                    <h3 class="is-size-3 has-text-weight-light">{{ po_model.po_title }}</h3>
+                </div>
+
+                <div class="column is-12">
+                    {% po_item_table po_items %}
+                </div>
+
+                <div class=" column is-12">
+                    {% include 'django_ledger/includes/card_markdown.html' with style='card_1'  title='PO Notes' notes_html=po_model.notes_html %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

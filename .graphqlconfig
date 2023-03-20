@@ -1,0 +1,16 @@
+{
+  "name": "Django Ledger GraphQL Schema",
+  "schemaPath": "schema.graphql",
+  "extensions": {
+    "endpoints": {
+      "Default GraphQL Endpoint": {
+        "url": "http://192.168.1.101:8000/api/v1/graphql/",
+        "headers": {
+          "user-agent": "JS GraphQL",
+          "Authorization": "Bearer "
+        },
+        "introspect": true
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{% load django_ledger %}
+{% load i18n %}
+
+<div class="table-container">
+
+    <table class="table is-fullwidth is-narrow is-striped is-bordered django-ledger-table-bottom-margin-75">
+        <thead>
+        <tr>
+            <th>{% trans 'Number' %}</th>
+            <th>{% trans 'Status' %}</th>
+            <th>{% trans 'Status Date' %}</th>
+            <th>{% trans 'Vendor' %}</th>
+            <th>{% trans 'Amount Due' %}</th>
+            <th>{% trans 'Payments' %}</th>
+            <th>{% trans 'Past Due' %}</th>
+            <th>{% trans 'Actions' %}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for bill in bills %}
+            <tr id="{{ bill.get_html_id }}">
+                <td>{{ bill.bill_number }}</td>
+                <td>{{ bill.get_bill_status_display }}</td>
+                <td>{{ bill.get_status_action_date }}</td>
+                <td>{{ bill.vendor.vendor_name }}</td>
+                <td id="{{ bill.get_html_amount_due_id }}">
+                    {% currency_symbol %}{{ bill.amount_due | currency_format }}</td>
+                <td id="{{ bill.get_html_amount_paid_id }}">
+                    {% currency_symbol %}{{ bill.amount_paid | currency_format }}</td>
+                <td class="has-text-centered">
+                    {% if bill.is_past_due %}
+                        <span class="icon is-small has-text-danger">{% icon 'bi:check-circle-fill' 24 %}</span>
+                    {% endif %}
+                </td>
+                <td class="has-text-centered">
+                    <div class="dropdown is-right is-hoverable" id="bill-action-{{ bill.uuid }}">
+                        <div class="dropdown-trigger">
+                            <button class="button is-small is-rounded is-outlined is-dark"
+                                    aria-haspopup="true"
+                                    aria-controls="dropdown-menu">
+                                <span>Actions</span>
+                                <span class="icon is-small">{% icon 'bi:arrow-down' 24 %}</span>
+                            </button>
+                        </div>
+                        <div class="dropdown-menu" id="dropdown-menu-{{ bill.uuid }}" role="menu">
+                            <div class="dropdown-content">
+                                <a href="{% url 'django_ledger:bill-detail' entity_slug=entity_slug bill_pk=bill.uuid %}"
+                                   class="dropdown-item has-text-success">Details</a>
+                                <a href="{% url 'django_ledger:bill-update' entity_slug=entity_slug bill_pk=bill.uuid %}"
+                                   class="dropdown-item has-text-warning-dark">Update</a>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+</div>

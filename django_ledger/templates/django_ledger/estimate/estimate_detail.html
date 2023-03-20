@@ -1,0 +1,114 @@
+{% extends 'django_ledger/layouts/content_layout_1.html' %}
+{% load django_ledger %}
+{% load trans from i18n %}
+
+{% block view_content %}
+
+    <div class="columns is-multiline">
+        <div class="column is-4">
+            {% include "django_ledger/estimate/includes/card_estimate.html" with  estimate_model=estimate_model contract_progress=contract_progress %}
+        </div>
+        <div class="column is-8">
+            <div class="columns is-multiline">
+                <div class="column is-12">
+                    <nav class="level">
+                        <div class="level-item has-text-centered">
+                            <div>
+                                <p class="heading">{% trans 'Revenue Estimate' %}:
+                                <p class="title" id="djl-cj-detail-estimated-revenue">
+                                    {% currency_symbol %}{{ estimate_model.revenue_estimate  | currency_format }}</p>
+                            </div>
+                        </div>
+                        <div class="level-item has-text-centered">
+                            <div>
+                                <p class="heading">{% trans 'Cost Estimate' %}:
+                                <p class="title" id="djl-cj-detail-estimated-cost">
+                                    {% currency_symbol %}{{ estimate_model.cost_estimate  | absolute | currency_format }}</p>
+                            </div>
+                        </div>
+                        <div class="level-item has-text-centered">
+                            <div>
+                                <p class="heading">{% trans 'Profit Estimate' %}:
+                                <p class="title" id="djl-cj-detail-estimated-cost">
+                                    {% currency_symbol %}{{ estimate_model.profit_estimate | currency_format }}</p>
+                            </div>
+                        </div>
+                        <div class="level-item has-text-centered">
+                            <div>
+                                <p class="heading">{% trans 'Gross Margin Estimate' %}:
+                                <p class="title" id="djl-cj-detail-estimated-cost">
+                                    {% currency_symbol %}{{ estimate_model.get_gross_margin_estimate  | percentage }}</p>
+                            </div>
+                        </div>
+                    </nav>
+                </div>
+                <div class="column is-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-header-title has-text-weight-light is-size-3">
+                                <span class="icon is-large">{% icon 'teenyicons:cost-estimate-outline' 36 %}</span>
+                                {% trans 'Estimate Items' %}
+                            </h2>
+                        </div>
+
+                        <div class="card-content">
+                            {% estimate_item_table estimate_item_list %}
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-12">
+                    {% include 'django_ledger/includes/card_markdown.html' with style='card_1'  title='Notes' notes_html=object.notes_html %}
+                </div>
+
+                {% if estimate_model.is_approved %}
+                    <div class="column is-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-header-title has-text-weight-light is-size-3">
+                                    <span class="icon is-large">{% icon 'teenyicons:cost-estimate-outline' 36 %}</span>
+                                    {% trans 'Purchase Orders' %}
+                                </h2>
+                            </div>
+                            <div class="card-content">
+                                {% po_table estimate_po_model_queryset %}
+                                <a href="{% url 'django_ledger:po-create-estimate' entity_slug=view.kwargs.entity_slug ce_pk=estimate_model.uuid %}"
+                                   class="button is-info">{% trans 'Initiate PO' %}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-header-title has-text-weight-light is-size-3">
+                                    <span class="icon is-large">{% icon 'teenyicons:cost-estimate-outline' 36 %}</span>
+                                    {% trans 'Bills' %}
+                                </h2>
+                            </div>
+                            <div class="card-content">
+                                {% bill_table estimate_bill_model_queryset %}
+                                <a href="{% url 'django_ledger:bill-create-estimate' entity_slug=view.kwargs.entity_slug ce_pk=estimate_model.uuid %}"
+                                   class="button is-info">{% trans 'Initiate Bill' %}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-header-title has-text-weight-light is-size-3">
+                                    <span class="icon is-large">{% icon 'teenyicons:cost-estimate-outline' 36 %}</span>
+                                    {% trans 'Invoices' %}
+                                </h2>
+                            </div>
+                            <div class="card-content">
+                                {% invoice_table estimate_invoice_model_queryset %}
+                                <a href="{% url 'django_ledger:invoice-create-estimate' entity_slug=view.kwargs.entity_slug ce_pk=estimate_model.uuid %}"
+                                   class="button is-info">{% trans 'Initiate Invoice' %}</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
