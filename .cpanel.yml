@@ -1,0 +1,17 @@
+---
+deployment:
+ tasks:
+ - export DEPLOYPATH=/home/tnhlabsc/newsofthewire.com/
+ - /bin/cp -R .idea $DEPLOYPATH
+ - /bin/cp -R assets $DEPLOYPATH
+ - /bin/cp -R dev_env $DEPLOYPATH
+ - /bin/cp -R django_ledger $DEPLOYPATH
+ - /bin/cp -R docs $DEPLOYPATH
+ - /bin/cp .graphqlconfig $DEPLOYPATH
+ - /bin/cp db.sqlite3 $DEPLOYPATH
+ - /bin/cp manage.py $DEPLOYPATH
+ - /bin/cp Pipfile $DEPLOYPATH
+ - /bin/cp Pipfile.lock $DEPLOYPATH
+ - /bin/cp pyproject.toml $DEPLOYPATH
+ - /bin/cp requirements.txt $DEPLOYPATH
+ - /bin/cp setup.py $DEPLOYPATH
