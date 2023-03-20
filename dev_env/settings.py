@@ -9,7 +9,7 @@ if not SECRET_KEY:
     SECRET_KEY = 'djangoledger1234!DoNotUse!BadIdea!VeryInsecure!'
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', '192.168.1.101', 'localhost']
+ALLOWED_HOSTS = [ 'www.newsofthewire', 'newsofthewire', '127.0.0.1', '192.168.1.101', 'localhost']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
