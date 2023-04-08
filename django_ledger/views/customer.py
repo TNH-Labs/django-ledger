@@ -7,8 +7,10 @@ Miguel Sanda <msanda@arrobalytics.com>
 """
 import csv
 
+from django.contrib import messages
+from django.http import HttpResponse, HttpResponseRedirect
 from django.http import HttpResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views import View
@@ -36,8 +38,8 @@ class ImportCSV_Customer(View):
         entity_model = entity_model_qs.filter(name__exact=entity_name).first()
 
         if not entity_model:
-            return HttpResponse(f"No EntityModel found for entity_name: {entity_name}")
-
+            messages.warning(request, f"No EntityModel found for entity_name: {entity_name}")
+            return HttpResponseRedirect(request.path)
         csv_file = request.FILES['csv_file']
         decoded_file = csv_file.read().decode('utf-8').splitlines()
         reader = csv.DictReader(decoded_file)
@@ -76,10 +78,12 @@ class ImportCSV_Customer(View):
         # If there were any invalid headers, return a response indicating which headers were invalid
         if invalid_headers:
             invalid_headers_str = '<br>'.join(invalid_headers)
-            return HttpResponse(f"Invalid headers:<br>{invalid_headers_str}")
+            messages.warning(request, f"Invalid headers:<br>{invalid_headers_str}")
+            return HttpResponseRedirect(request.path)
         else:
             # Return a response indicating that the data was successfully imported
-            return redirect(request.path)
+            messages.success(request, f"Successfully imported")
+            return HttpResponseRedirect(request.path)
 
     def dispatch(self, request, *args, **kwargs):
         # Override the dispatch method to enforce CSRF protection on POST requests
@@ -182,4 +186,37 @@ class CustomerModelUpdateView(DjangoLedgerSecurityMixIn,
         form.save()
         return super().form_valid(form)
 
-# todo: add CustomerDeleteView
+class CustomerModelDeleteView(DjangoLedgerSecurityMixIn, CustomerModelModelViewQuerySetMixIn, View):
+    def get(self, request, *args, **kwargs):
+        customer_model = get_object_or_404(self.get_queryset(), uuid=kwargs['customer_pk'])
+        customer_model.delete()
+        messages.success(request, 'Customer was successfully deleted.')
+        return redirect('django_ledger:customer-list', entity_slug=kwargs['entity_slug'])
+
+    def get_queryset(self):
+        return CustomerModel.objects.for_entity(
+            entity_slug=self.kwargs['entity_slug'],
+            user_model=self.request.user
+        ).order_by('-updated')
+#
+# from django.urls import reverse_lazy
+# from django.contrib.messages.views import SuccessMessageMixin
+# from django.shortcuts import get_object_or_404
+# from django.views.generic import DeleteView
+#
+# from django_ledger.models.customer import CustomerModel
+# from django_ledger.views.mixins import DjangoLedgerSecurityMixIn
+#
+#
+# class CustomerModelDeleteView(DjangoLedgerSecurityMixIn, SuccessMessageMixin, DeleteView):
+#     model = CustomerModel
+#     context_object_name = 'customer'
+#     slug_url_kwarg = 'customer_pk'
+#     success_message = 'Customer was deleted successfully.'
+#
+#     def get_success_url(self):
+#         return reverse_lazy('django_ledger:customer-list', kwargs={'entity_slug': self.kwargs['entity_slug']})
+#
+#     def get_object(self, queryset=None):
+#         customer = get_object_or_404(CustomerModel, uuid=self.kwargs['customer_pk'])
+#         return customer

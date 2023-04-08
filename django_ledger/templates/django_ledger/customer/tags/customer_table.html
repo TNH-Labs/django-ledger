@@ -37,6 +37,8 @@
                             <div class="dropdown-content">
                                 <a href="{% url 'django_ledger:customer-update' entity_slug=view.kwargs.entity_slug customer_pk=customer.uuid %}"
                                    class="dropdown-item has-text-weight-bold has-text-info">{% trans 'Update' %}</a>
+                                <a href="{% url 'django_ledger:customer-delete' entity_slug=view.kwargs.entity_slug customer_pk=customer.uuid %}"
+                                   class="dropdown-item has-text-weight-bold has-text-info">{% trans 'Delete' %}</a>
                             </div>
                         </div>
                     </div>

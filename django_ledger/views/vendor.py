@@ -7,12 +7,13 @@ Miguel Sanda <msanda@arrobalytics.com>
 """
 import io
 
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_protect
 from django.views.generic import ListView, CreateView, UpdateView
+from django.contrib import messages
 
 from django_ledger.forms.vendor import VendorModelForm
 from django_ledger.models.entity import EntityModel
@@ -43,7 +44,9 @@ class ImportCSV(View):
         entity_model = entity_model_qs.filter(name__exact=entity_name).first()
 
         if not entity_model:
-            return HttpResponse(f"No EntityModel found for entity_name: {entity_name}")
+            messages.warning(request, f"No EntityModel found for entity_name: {entity_name}")
+            return HttpResponseRedirect(request.path)
+            # return HttpResponse(f"No EntityModel found for entity_name: {entity_name}")
 
         csv_file = request.FILES['csv_file']
         decoded_file = csv_file.read().decode('utf-8').splitlines()
@@ -83,10 +86,13 @@ class ImportCSV(View):
         # If there were any invalid headers, return a response indicating which headers were invalid
         if invalid_headers:
             invalid_headers_str = '<br>'.join(invalid_headers)
-            return HttpResponse(f"Invalid headers:<br>{invalid_headers_str}")
+            # return HttpResponse(f"Invalid headers:<br>{invalid_headers_str}")
+            messages.warning(request, f"Invalid headers:<br>{invalid_headers_str}")
+            return HttpResponseRedirect(request.path)
         else:
             # Return a response indicating that the data was successfully imported
-            return redirect(request.path)
+            messages.success(request, f"Successfully imported")
+            return HttpResponseRedirect(request.path)
 
     def dispatch(self, request, *args, **kwargs):
         # Override the dispatch method to enforce CSRF protection on POST requests
@@ -95,67 +101,6 @@ class ImportCSV(View):
         else:
             return super().dispatch(request, *args, **kwargs)
 
-
-"""
-class ImportCSV(View):
-    def get(self, request):
-        # Create an instance of the UploadCSV form and pass it to the template
-        form = UploadCSVForm(user=request.user)
-        return render(request, 'bills/upload_csv.html', {'form': form})
-
-    def post(self, request):
-        # Create an instance of the UploadCSV form and pass it the request data
-        form = UploadCSVForm(request.POST, request.FILES, user=request.user)
-
-        # Check if the form is valid
-        if form.is_valid():
-            # Get the entity_name from the form data
-            entity_name = form.cleaned_data['entity']
-
-            # Get the EntityModel instance corresponding to the entity_name
-            entity_model_qs = EntityModel.objects.for_user(user_model=self.request.user)
-            entity_model = entity_model_qs.filter(name__exact=entity_name).first()
-
-            # Check if an EntityModel instance was found for the given entity_name
-            if not entity_model:
-                return HttpResponse(f"No EntityModel found for entity_name: {entity_name}")
-
-            # Open the CSV file and read its contents using the built-in csv module
-            csv_file = form.cleaned_data['csv_file']
-            decoded_file = csv_file.read().decode('utf-8').splitlines()
-            reader = csv.DictReader(decoded_file)
-
-            # Define the expected headers and their corresponding model fields
-            expected_headers = ['Vendor Name', 'Address', 'Phone Number', 'Country', 'Zip Code', 'Email']
-            field_mapping = {
-                'Vendor Name': 'vendor_name',
-                'Address': 'address',
-                'Phone Number': 'phone_number',
-                'Country': 'country',
-                'Zip Code': 'zip_code',
-                'Email': 'email'
-            }
-
-            # Define a list to keep track of any headers that don't match the expected headers
-            invalid_headers = []
-
-            # Loop through the rows in the CSV file and add each record to the database
-            for row in reader:
-                # Check if all expected headers are present in the row
-                if all(header in row for header in expected_headers):
-                    # Map the row data to the corresponding model fields
-                    mapped_data = {field_mapping[header]: row[header] for header in expected_headers}
-
-                    # Create a new VendorModel instance and save it to the database
-                    vendor = VendorModel(
-                        entity_model=entity_model,
-                        vendor_name=row['Vendor Name'],
-                        country=row['Country'],
-                        address_1=row['Address'],
-                        phone=row['Phone Number'],
-                        zip_code=row['Zip Code'],
-                        email=row['Email
-"""
 
 class VendorModelModelViewQuerySetMixIn:
     queryset = None
@@ -244,3 +189,18 @@ class VendorModelUpdateView(DjangoLedgerSecurityMixIn, VendorModelModelViewQuery
     def form_valid(self, form):
         form.save()
         return super().form_valid(form)
+
+class VendorModelDeleteView(DjangoLedgerSecurityMixIn, VendorModelModelViewQuerySetMixIn, View):
+    def get(self, request, *args, **kwargs):
+        vendor_model = get_object_or_404(self.get_queryset(), uuid=kwargs['vendor_pk'])
+        vendor_model.delete()
+        messages.success(request, 'Vendor was successfully deleted.')
+        return redirect('django_ledger:vendor-list', entity_slug=kwargs['entity_slug'])
+
+    def get_queryset(self):
+        return VendorModel.objects.for_entity(
+            entity_slug=self.kwargs['entity_slug'],
+            user_model=self.request.user
+        ).order_by('-updated')
+
+

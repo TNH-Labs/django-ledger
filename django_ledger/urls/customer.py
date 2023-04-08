@@ -8,4 +8,7 @@ urlpatterns = [
     path('<slug:entity_slug>/update/<uuid:customer_pk>/',
          views.CustomerModelUpdateView.as_view(),
          name='customer-update'),
+    path('<slug:entity_slug>/delete/<uuid:customer_pk>/',
+            views.CustomerModelDeleteView.as_view(),
+            name='customer-delete'),
 ]

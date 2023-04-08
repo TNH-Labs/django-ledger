@@ -37,6 +37,8 @@
 {#                                <a href="" class="dropdown-item has-text-success">View</a>#}
                                 <a href="{% url 'django_ledger:vendor-update' entity_slug=view.kwargs.entity_slug vendor_pk=vendor.uuid %}"
                                    class="dropdown-item has-text-weight-bold has-text-info">{% trans 'Update' %}</a>
+                                <a href="{% url 'django_ledger:vendor-delete' entity_slug=view.kwargs.entity_slug vendor_pk=vendor.uuid %}"
+                                   class="dropdown-item has-text-weight-bold has-text-info">{% trans 'Delete' %}</a>
                             </div>
                         </div>
                     </div>
