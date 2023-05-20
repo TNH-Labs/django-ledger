@@ -35,7 +35,7 @@ class ImportCSV(View):
             'entities': entity_models,
         }
         print("\n\n\nEntity Models: ", entity_models, "\n\n\n")
-        return redirect('django_ledger:customer-list', entity_slug=entity_models[0].slug)
+        return redirect('django_ledger:vendor-list', entity_slug=entity_models[0].slug)
 
     def post(self, request):
         entity_name = request.POST.get('entity')
@@ -87,7 +87,7 @@ class ImportCSV(View):
         if invalid_headers:
             invalid_headers_str = '<br>'.join(invalid_headers)
             # return HttpResponse(f"Invalid headers:<br>{invalid_headers_str}")
-            messages.warning(request, f"Invalid headers:<br>{invalid_headers_str}")
+            messages.warning(request, f"Invalid headers:\n{invalid_headers_str}")
             return HttpResponseRedirect(request.path)
         else:
             # Return a response indicating that the data was successfully imported

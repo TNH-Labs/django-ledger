@@ -78,7 +78,7 @@ class ImportCSV_Customer(View):
         # If there were any invalid headers, return a response indicating which headers were invalid
         if invalid_headers:
             invalid_headers_str = '<br>'.join(invalid_headers)
-            messages.warning(request, f"Invalid headers:<br>{invalid_headers_str}")
+            messages.warning(request, f"Invalid headers:\n{invalid_headers_str}")
             return HttpResponseRedirect(request.path)
         else:
             # Return a response indicating that the data was successfully imported
