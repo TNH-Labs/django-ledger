@@ -45,7 +45,39 @@
                             <button class="button is-primary is-outlined is-small" type="submit">Submit</button>
                         </div>
                     </form>
-                </div> 
+                </div>
+                <div class="box">
+        <h3>Add a Dynamic .CSV file to add a list of Vendors</h3>
+        <form method="post" enctype="multipart/form-data" action="{% url 'django_ledger:upload' %}">
+            {% csrf_token %}
+            <div class="column">
+                <label for="csv_file">Select a CSV file:</label>
+                <input class="btn btn-link text-secondary mb-1" type="file" name="file" accept=".csv" required="required">
+                <button class="btn btn-primary" type="submit" style="font-size: 12px;">Upload</button>
+            </div>
+        </form>
+    </div>
+
+    {% if fields %}
+        <div class="box">
+            <h3>Map CSV fields to database fields:</h3>
+            <form method="post" action="{% url 'django_ledger:mapping' %}">
+                {% csrf_token %}
+                <div class="column">
+                    {% for field in fields %}
+                        <label for="{{ field }}">{{ field }}:</label>
+                        <select name="{{ field }}" id="{{ field }}" class="form-control">
+                            <option value="ignore">Do not save</option>
+                            <!-- Add other options if needed -->
+                        </select>
+                    {% endfor %}
+                </div>
+                <div class="column">
+                    <button class="btn btn-primary" type="submit">Save Mapping</button>
+                </div>
+            </form>
+        </div>
+    {% endif %}
             </div>
         </div>
         

@@ -14,6 +14,18 @@ from django_ledger.models.vendor import VendorModel
 from django_ledger.settings import DJANGO_LEDGER_FORM_INPUT_CLASSES
 from django import forms
 
+from django import forms
+
+
+class MappingForm(forms.Form):
+    def __init__(self, *args, headers=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if headers:
+            choices = [(header, header) for header in headers]
+            self.fields['mapping'] = forms.ChoiceField(choices=choices,
+                                                       widget=forms.Select(attrs={'class': 'form-control'}))
+
 
 class VendorModelForm(ModelForm):
 

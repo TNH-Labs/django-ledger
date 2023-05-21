@@ -6,7 +6,8 @@ Contributions to this module:
 Miguel Sanda <msanda@arrobalytics.com>
 """
 import io
-
+from django import forms
+import pandas as pd
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -202,5 +203,92 @@ class VendorModelDeleteView(DjangoLedgerSecurityMixIn, VendorModelModelViewQuery
             entity_slug=self.kwargs['entity_slug'],
             user_model=self.request.user
         ).order_by('-updated')
+
+# from django.shortcuts import redirect
+#
+# def redirect_to_mapping(request):
+#     return HttpResponseRedirect('/vendor/mapping/')  # Updated URL
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.http import HttpResponseRedirect
+from django.contrib import messages
+
+from django.shortcuts import render
+
+from django.shortcuts import redirect
+
+def upload(request):
+    if request.method == 'POST':
+        csv_file = request.FILES['file']
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, 'This is not a csv file.')
+        else:
+            df = pd.read_csv(csv_file)
+            fields = df.columns.tolist()
+            query_params = '&'.join(f'fields={field}' for field in fields)
+            return redirect(f'{reverse("vendor:mapping")}?{query_params}')  # Updated redirect to the mapping view
+    else:
+        return redirect('vendor:vendor-list')  # Updated namespace
+
+
+
+
+
+
+from django.contrib.auth.decorators import login_required
+
+
+def mapping(request):
+    fields = request.GET.getlist('fields')
+    if 'df' in request.session:
+        df = pd.read_json(request.session['df'])
+        fields = VendorModel._meta.get_fields()
+
+        # Filter out "Unnamed" columns
+        df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+
+        # Add an option for "Do not save" to the choices
+        choices = [(f.name, f.name) for f in fields] + [('ignore', 'Do not save')]
+        field_dict = {col: forms.ChoiceField(choices=choices, widget=forms.Select(attrs={'class': 'form-control'})) for
+                      col in df.columns}
+        DynamicForm = type('DynamicForm', (forms.Form,), field_dict)
+        return render(request, 'django_ledger/vendor/mapping.html', {'form': DynamicForm()})
+
+    if request.method == 'POST':
+
+        df = pd.read_json(request.session['df'])
+        mapping = {k: v for k, v in request.POST.items() if v != 'ignore'}  # Ignore columns mapped to "Do not save"
+        df.rename(columns=mapping, inplace=True)
+
+        # Remove unwanted columns
+        unwanted_columns = ['ignore', 'Unnamed: 10', 'Unnamed: 11', 'Unnamed: 12', 'Unnamed: 13']
+        df = df.drop(columns=[col for col in unwanted_columns if col in df.columns], errors='ignore')
+
+        # Translate certain fields
+        if 'status' in df.columns:  # Replace only if the 'status' column exists
+            df['sent_follow_up'] = df['sent_follow_up'].apply(
+                lambda x: True if x.lower() == 'yes' else False if x.lower() == 'no' else x)
+
+        # Filter the dictionary keys based on the fields of your `Account` model
+        valid_fields = [field.name for field in VendorModel._meta.get_fields()]
+
+        for _, row in df.iterrows():
+            row_dict = row.to_dict()
+            filtered_dict = {key: value for key, value in row_dict.items() if key in valid_fields}
+
+            # Add the user to the filtered_dict
+            filtered_dict['user'] = request.user
+
+            VendorModel.objects.create(**filtered_dict)
+
+        return redirect('vendor:vendor-list')  # Updated namespace
+    context = {
+        'fields': fields,
+    }
+    return render(request, 'django_ledger/vendor/mapping.html', context)
+    # return redirect('vendor:vendor-list')  # Updated namespace
+
+
 
 
