@@ -1,5 +1,6 @@
 from django.urls import path
 from django_ledger import views
+from django_ledger.views import Mapping, Mapping_
 
 urlpatterns = [
     path('<slug:entity_slug>/list/', views.CustomerModelListView.as_view(), name='customer-list'),
@@ -11,4 +12,6 @@ urlpatterns = [
     path('<slug:entity_slug>/delete/<uuid:customer_pk>/',
             views.CustomerModelDeleteView.as_view(),
             name='customer-delete'),
+    path('upload/', views.upload_, name='uploadC'),
+    path('mapping/', Mapping_.as_view(), {'view': 'django_ledger:customer-list'}, name='mappingC'),
 ]

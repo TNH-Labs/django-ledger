@@ -7,6 +7,23 @@
 
 {% block view_content %}
 
+    <style>
+    .loader {
+            border: 16px solid #f3f3f3; /* Light grey */
+            border-top: 16px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+    </style>
+
     <div class="box">
         <div class="columns">
             <div class="column">
@@ -20,66 +37,43 @@
                     </div>
                 {% endif %}
                 <a class="button is-primary is-outlined is-small"
-                   href="{% url 'django_ledger:vendor-create' entity_slug=view.kwargs.entity_slug %}">
+                   href="{% url 'django_ledger:vendor-create' entity_slug=view.kwargs.entity_slug|default:'' %}">
                     <span class="icon is-large has-text-success">{% icon 'carbon:add-alt' 24 %}</span>
                     <span>{% trans 'New Vendor' %}</span>
                 </a>
 
 
                 <div style="border-radius: 15px;border: 1px solid lightgray;margin-top: 4%;">
-                    <div class="column"><h3>Add a .CSV file to add a list of Vendors</h3></div>
+                    <div class="column"><h3>CSV Uploader</h3></div>
                     
                     <form method="post" enctype="multipart/form-data" action="{% url 'django_ledger:ImportCSV' %}">
                         {% csrf_token %}
                         <div class="column">
                             <label for="csv_file">Select a CSV file:</label>
-                            <input type="file" name="csv_file" accept=".csv" required="required">
-                        </div>
-                        <div class="column">
-                            <label for="entity">Select an entity:</label>
-                            <select name="entity" id="entity" class="button is-primary is-outlined is-small">
-                                {% for entity in extra_content.entity_list %}
-                                    <option value="{{ entity.name }}">{{ entity.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <button class="button is-primary is-outlined is-small" type="submit">Submit</button>
+                            <input type="file" class="button is-primary is-outlined is-small" name="csv_file" accept=".csv" required="required">
+                            <button class="button is-primary is-outlined is-small" type="submit">Upload CSV</button>
                         </div>
                     </form>
                 </div>
-                <div class="box">
-        <h3>Add a Dynamic .CSV file to add a list of Vendors</h3>
-        <form method="post" enctype="multipart/form-data" action="{% url 'django_ledger:upload' %}">
-            {% csrf_token %}
-            <div class="column">
-                <label for="csv_file">Select a CSV file:</label>
-                <input class="btn btn-link text-secondary mb-1" type="file" name="file" accept=".csv" required="required">
-                <button class="btn btn-primary" type="submit" style="font-size: 12px;">Upload</button>
-            </div>
-        </form>
-    </div>
+                <div  style="border-radius: 15px;border: 1px solid lightgray;margin-top: 4%;">
+                    <div class="column"><h3>Dynamic CSV uploader</h3></div>
+                    <form id="upload-form" method="post" enctype="multipart/form-data" action="{% url 'django_ledger:uploadV' %}">
+                    {% csrf_token %}
+                        <div class="column">
+                            <label for="csv_file">Select a CSV file:</label>
+                            <input  class="button is-primary is-outlined is-small" type="file" name="file" accept=".csv" required="required">
+                            <button class="button is-primary is-outlined is-small" type="submit">Upload CSV</button>
+                        </div>
+                    </form>
 
-    {% if fields %}
-        <div class="box">
-            <h3>Map CSV fields to database fields:</h3>
-            <form method="post" action="{% url 'django_ledger:mapping' %}">
-                {% csrf_token %}
-                <div class="column">
-                    {% for field in fields %}
-                        <label for="{{ field }}">{{ field }}:</label>
-                        <select name="{{ field }}" id="{{ field }}" class="form-control">
-                            <option value="ignore">Do not save</option>
-                            <!-- Add other options if needed -->
-                        </select>
-                    {% endfor %}
                 </div>
-                <div class="column">
-                    <button class="btn btn-primary" type="submit">Save Mapping</button>
-                </div>
-            </form>
-        </div>
-    {% endif %}
             </div>
         </div>
+    <div>
+
+    </div>
+    <div id="mapping"></div>
+            <div style="margin-top: 5px;"></div>
         
         
           
@@ -88,19 +82,40 @@
 
     </div>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            let infoMessages = document.querySelectorAll(".message.warning");
-            if (infoMessages) {
-                infoMessages.forEach(function (message) {
-                    message.style.backgroundColor = "red";
-                    message.style.color = "white";
-                    message.style.padding = "10px";
-                    message.style.marginBottom = "10px";
-                });
-            }
-        });
-    </script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('#upload-form').on('submit', function(e) {
+        e.preventDefault();
+        console.log('form submitted!')
+
+        $.ajax({
+    type: 'POST',
+    url: '{% url 'django_ledger:uploadC' %}',
+    data: new FormData(this),
+    contentType: false,
+    cache: false,
+    processData: false,
+    beforeSend: function() {
+        // Add a loading spinner
+        $('#mapping').html('<div class="loader"></div>');
+    },
+    success: function(data){
+        window.location.href = '{% url 'django_ledger:mappingC' %}';
+    },
+    error: function(error){
+        console.log(error);
+        // Handle error here
+    }
+});
+
+    });
+});
+</script>
+
+
 
 
 {% endblock %}

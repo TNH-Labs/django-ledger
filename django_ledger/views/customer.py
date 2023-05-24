@@ -6,7 +6,10 @@ Contributions to this module:
 Miguel Sanda <msanda@arrobalytics.com>
 """
 import csv
+import json
 
+import pandas as pd
+from django import forms
 from django.contrib import messages
 from django.http import HttpResponse, HttpResponseRedirect
 from django.http import HttpResponse
@@ -25,28 +28,19 @@ from django_ledger.views.mixins import DjangoLedgerSecurityMixIn
 class ImportCSV_Customer(View):
     def get(self, request):
         entity_models = EntityModel.objects.for_user(user_model=request.user)
-        context = {
-            'entities': entity_models,
-        }
-        print("\n\n\nEntity Models: ", entity_models, "\n\n\n")
         return redirect('django_ledger:customer-list', entity_slug=entity_models[0].slug)
 
     def post(self, request):
-        entity_name = request.POST.get('entity')
+        entity_slug = EntityModel.objects.for_user(user_model=request.user).first().slug
+        entity_model = get_object_or_404(EntityModel, slug=entity_slug)
 
-        entity_model_qs = EntityModel.objects.for_user(user_model=self.request.user)
-        entity_model = entity_model_qs.filter(name__exact=entity_name).first()
-
-        if not entity_model:
-            messages.warning(request, f"No EntityModel found for entity_name: {entity_name}")
-            return HttpResponseRedirect(request.path)
         csv_file = request.FILES['csv_file']
         decoded_file = csv_file.read().decode('utf-8').splitlines()
         reader = csv.DictReader(decoded_file)
 
         expected_headers = ['Customer Name', 'Address', 'Phone Number', 'Country', 'Zip Code', 'Email']
         field_mapping = {
-            'Customer Name': 'vendor_name',
+            'Customer Name': 'customer_name',
             'Address': 'address',
             'Phone Number': 'phone_number',
             'Country': 'country',
@@ -60,7 +54,7 @@ class ImportCSV_Customer(View):
             if all(header in row for header in expected_headers):
                 mapped_data = {field_mapping[header]: row[header] for header in expected_headers}
 
-                vendor = CustomerModel(
+                customer = CustomerModel(
                     entity_model=entity_model,
                     customer_name=row['Customer Name'],
                     country=row['Country'],
@@ -69,7 +63,7 @@ class ImportCSV_Customer(View):
                     zip_code=row['Zip Code'],
                     email=row['Email']
                 )
-                vendor.save()
+                customer.save()
             else:
                 # Add any missing headers to the list of invalid headers
                 missing_headers = set(expected_headers) - set(row.keys())
@@ -198,25 +192,106 @@ class CustomerModelDeleteView(DjangoLedgerSecurityMixIn, CustomerModelModelViewQ
             entity_slug=self.kwargs['entity_slug'],
             user_model=self.request.user
         ).order_by('-updated')
-#
-# from django.urls import reverse_lazy
-# from django.contrib.messages.views import SuccessMessageMixin
-# from django.shortcuts import get_object_or_404
-# from django.views.generic import DeleteView
-#
-# from django_ledger.models.customer import CustomerModel
-# from django_ledger.views.mixins import DjangoLedgerSecurityMixIn
-#
-#
-# class CustomerModelDeleteView(DjangoLedgerSecurityMixIn, SuccessMessageMixin, DeleteView):
-#     model = CustomerModel
-#     context_object_name = 'customer'
-#     slug_url_kwarg = 'customer_pk'
-#     success_message = 'Customer was deleted successfully.'
-#
-#     def get_success_url(self):
-#         return reverse_lazy('django_ledger:customer-list', kwargs={'entity_slug': self.kwargs['entity_slug']})
-#
-#     def get_object(self, queryset=None):
-#         customer = get_object_or_404(CustomerModel, uuid=self.kwargs['customer_pk'])
-#         return customer
+
+
+
+def upload_(request):
+    print(f"acccessing upload of customer")
+
+    if request.method == 'POST':
+        csv_file = request.FILES['file']
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, 'This is not a csv file.')
+        else:
+
+            df = pd.read_csv(csv_file)
+            request.session['df'] = df.to_json(orient='split')  # Store the dataframe in the session
+            fields = df.columns.tolist()
+            options = [field.name for field in CustomerModel._meta.get_fields()]
+            context = {'fields': fields, 'options': options}
+            return render(request, 'django_ledger/customer/mapping_partial.html', context)
+    else:
+        # entity_models = EntityModel.objects.for_user(user_model=request.user)
+        # return redirect('django_ledger:customer-list', entity_slug=entity_models[0].slug)
+        return HttpResponseRedirect(reverse('django_ledger:mappingC'))
+
+
+
+class Mapping_(DjangoLedgerSecurityMixIn, View):
+    print(f"acccessing mapping of customer")
+    def get(self, request, *args, **kwargs):
+        entity_models = EntityModel.objects.for_user(user_model=request.user)
+        entity_slug = EntityModel.objects.for_user(user_model=request.user).first().slug
+        fields = request.GET.getlist('fields')
+        view = reverse('django_ledger:customer-list', kwargs={'entity_slug': entity_slug})
+        if 'df' in request.session:
+            df = pd.read_json(request.session['df'], orient='split')
+
+            # Filter out "Unnamed" columns
+            df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+
+            # Add an option for "Do not save" to the choices
+            choices = [(f.name, f.name) for f in CustomerModel._meta.get_fields() if not f.name.startswith('Unnamed')] + [
+                ('ignore', 'Do not save')]
+            field_dict = {col: forms.ChoiceField(choices=choices, widget=forms.Select(attrs={'class': 'form-control'}))
+                          for col in df.columns}
+            DynamicForm = type('DynamicForm', (forms.Form,), field_dict)
+            print("DynamicForm:", DynamicForm, "\n\n\n")
+
+            # context = {
+            #     'fields': fields,
+            #     'form': DynamicForm(),
+            #     'entity_slug': entity_slug,
+            #     'view': view
+            # }
+            # return render(request, 'django_ledger/customer/customer_list.html', context)
+
+        return redirect('django_ledger:customer-list', entity_slug=entity_models[0].slug)
+
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.session['df'])
+
+            # Ensure the columns and data arrays have the same length
+            columns = [col for col in data['columns'] if not col.startswith('Unnamed')]
+            data = data['data']
+            data = [row[:len(columns)] for row in data]
+
+            df = pd.DataFrame(data, columns=columns)
+        except ValueError as e:
+            print("Error loading JSON into DataFrame:", e)
+            print("Data:", request.session['df'])
+            raise e
+
+        mapping = {k: v for k, v in request.POST.items() if v != 'ignore'}  # Ignore columns mapped to "Do not save"
+        df.rename(columns=mapping, inplace=True)
+
+        # Remove unwanted columns
+        unwanted_columns = ['ignore', 'Unnamed: 6', 'Unnamed: 7','Unnamed: 10', 'Unnamed: 11', 'Unnamed: 12', 'Unnamed: 13', 'Unnamed: 6', 'Unnamed: 7']
+        df = df.drop(columns=[col for col in unwanted_columns if col in df.columns], errors='ignore')
+
+        # Translate certain fields
+        if 'status' in df.columns:  # Replace only if the 'status' column exists
+            df['sent_follow_up'] = df['sent_follow_up'].apply(
+                lambda x: True if x.lower() == 'yes' else False if x.lower() == 'no' else x)
+
+        # Filter the dictionary keys based on the fields of your `customerModel`
+        valid_fields = [field.name for field in CustomerModel._meta.get_fields() if not field.name.startswith('Unnamed')]
+        entity_slug = EntityModel.objects.for_user(user_model=request.user).first().slug
+        entity_model = get_object_or_404(EntityModel, slug=entity_slug)
+
+        for _, row in df.iterrows():
+            row_dict = row.to_dict()
+            filtered_dict = {key: value for key, value in row_dict.items() if key in valid_fields}
+
+            # Add the user to the filtered_dict
+            entity_slug = EntityModel.objects.for_user(user_model=request.user).first().slug
+            print(f"\n\n{entity_slug}\n\n")
+            filtered_dict['entity_model'] = entity_model
+
+            CustomerModel.objects.create(**filtered_dict)
+
+        messages.success(request, 'Your file has been uploaded.')
+        return HttpResponseRedirect(request.path)
+

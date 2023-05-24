@@ -6,6 +6,8 @@ Contributions to this module:
 Miguel Sanda <msanda@arrobalytics.com>
 """
 import io
+import json
+from django.shortcuts import render
 from django import forms
 import pandas as pd
 from django.http import HttpResponse, HttpResponseRedirect
@@ -15,39 +17,27 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_protect
 from django.views.generic import ListView, CreateView, UpdateView
 from django.contrib import messages
-
 from django_ledger.forms.vendor import VendorModelForm
 from django_ledger.models.entity import EntityModel
 from django_ledger.models.vendor import VendorModel
 from django_ledger.views.mixins import DjangoLedgerSecurityMixIn
-from django.views import View
-
-import csv
-
+from django.http import HttpResponseRedirect
+from django.contrib import messages
+from django.shortcuts import redirect
 from django.views import View
 from django.http import HttpResponse
-from django.shortcuts import render
 import csv
 
 class ImportCSV(View):
     def get(self, request):
         entity_models = EntityModel.objects.for_user(user_model=request.user)
-        context = {
-            'entities': entity_models,
-        }
-        print("\n\n\nEntity Models: ", entity_models, "\n\n\n")
         return redirect('django_ledger:vendor-list', entity_slug=entity_models[0].slug)
 
     def post(self, request):
-        entity_name = request.POST.get('entity')
 
-        entity_model_qs = EntityModel.objects.for_user(user_model=self.request.user)
-        entity_model = entity_model_qs.filter(name__exact=entity_name).first()
+        entity_slug = EntityModel.objects.for_user(user_model=request.user).first().slug
+        entity_model = get_object_or_404(EntityModel, slug=entity_slug)
 
-        if not entity_model:
-            messages.warning(request, f"No EntityModel found for entity_name: {entity_name}")
-            return HttpResponseRedirect(request.path)
-            # return HttpResponse(f"No EntityModel found for entity_name: {entity_name}")
 
         csv_file = request.FILES['csv_file']
         decoded_file = csv_file.read().decode('utf-8').splitlines()
@@ -127,6 +117,7 @@ class VendorModelListView(DjangoLedgerSecurityMixIn, VendorModelModelViewQuerySe
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        print(f"context: {context}")
         entities = EntityModel.objects.all()
         print("\n\n\nentites ", entities)
         context['entities'] = entities
@@ -204,65 +195,80 @@ class VendorModelDeleteView(DjangoLedgerSecurityMixIn, VendorModelModelViewQuery
             user_model=self.request.user
         ).order_by('-updated')
 
-# from django.shortcuts import redirect
-#
-# def redirect_to_mapping(request):
-#     return HttpResponseRedirect('/vendor/mapping/')  # Updated URL
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from django.http import HttpResponseRedirect
-from django.contrib import messages
-
-from django.shortcuts import render
-
-from django.shortcuts import redirect
 
 def upload(request):
+    print(f"acccessing upload of vendors")
+
     if request.method == 'POST':
         csv_file = request.FILES['file']
         if not csv_file.name.endswith('.csv'):
             messages.error(request, 'This is not a csv file.')
         else:
+
             df = pd.read_csv(csv_file)
+            request.session['df'] = df.to_json(orient='split')  # Store the dataframe in the session
             fields = df.columns.tolist()
-            query_params = '&'.join(f'fields={field}' for field in fields)
-            return redirect(f'{reverse("vendor:mapping")}?{query_params}')  # Updated redirect to the mapping view
+            options = [field.name for field in VendorModel._meta.get_fields()]
+            context = {'fields': fields, 'options': options}
+            return render(request, 'django_ledger/vendor/mapping_partial.html', context)
     else:
-        return redirect('vendor:vendor-list')  # Updated namespace
+        return HttpResponseRedirect(request.path) # Updated to vendor-list.html
 
 
+class Mapping(DjangoLedgerSecurityMixIn, View):
+    print(f"acccessing mapping of vendors")
+    def get(self, request, *args, **kwargs):
+        entity_models = EntityModel.objects.for_user(user_model=request.user)
+        entity_slug = EntityModel.objects.for_user(user_model=request.user).first().slug
+        fields = request.GET.getlist('fields')
+        view = reverse('django_ledger:vendor-list', kwargs={'entity_slug': entity_slug})
+        if 'df' in request.session:
+            df = pd.read_json(request.session['df'], orient='split')
+
+            # Filter out "Unnamed" columns
+            df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+
+            # Add an option for "Do not save" to the choices
+            choices = [(f.name, f.name) for f in VendorModel._meta.get_fields() if not f.name.startswith('Unnamed')] + [
+                ('ignore', 'Do not save')]
+            field_dict = {col: forms.ChoiceField(choices=choices, widget=forms.Select(attrs={'class': 'form-control'}))
+                          for
+                          col in df.columns}
+            DynamicForm = type('DynamicForm', (forms.Form,), field_dict)
+            # return render(request, 'django_ledger/vendor/vendor_list.html', {'form': DynamicForm(), 'view': entity_slug})
+
+            # return HttpResponseRedirect(request.path)
+            print(f"Fields: {entity_slug}")
+            print(f"\n\nview: {view}\n\n")
 
 
+        context = {
+            'fields': fields,
+            'entity_slug': entity_slug,
+            'view': view
+        }
+        return redirect('django_ledger:vendor-list', entity_slug=entity_models[0].slug)
 
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.session['df'])
 
-from django.contrib.auth.decorators import login_required
+            # Ensure the columns and data arrays have the same length
+            columns = [col for col in data['columns'] if not col.startswith('Unnamed')]
+            data = data['data']
+            data = [row[:len(columns)] for row in data]
 
+            df = pd.DataFrame(data, columns=columns)
+        except ValueError as e:
+            print("Error loading JSON into DataFrame:", e)
+            print("Data:", request.session['df'])
+            raise e
 
-def mapping(request):
-    fields = request.GET.getlist('fields')
-    if 'df' in request.session:
-        df = pd.read_json(request.session['df'])
-        fields = VendorModel._meta.get_fields()
-
-        # Filter out "Unnamed" columns
-        df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
-
-        # Add an option for "Do not save" to the choices
-        choices = [(f.name, f.name) for f in fields] + [('ignore', 'Do not save')]
-        field_dict = {col: forms.ChoiceField(choices=choices, widget=forms.Select(attrs={'class': 'form-control'})) for
-                      col in df.columns}
-        DynamicForm = type('DynamicForm', (forms.Form,), field_dict)
-        return render(request, 'django_ledger/vendor/mapping.html', {'form': DynamicForm()})
-
-    if request.method == 'POST':
-
-        df = pd.read_json(request.session['df'])
         mapping = {k: v for k, v in request.POST.items() if v != 'ignore'}  # Ignore columns mapped to "Do not save"
         df.rename(columns=mapping, inplace=True)
 
         # Remove unwanted columns
-        unwanted_columns = ['ignore', 'Unnamed: 10', 'Unnamed: 11', 'Unnamed: 12', 'Unnamed: 13']
+        unwanted_columns = ['ignore', 'Unnamed: 10', 'Unnamed: 11', 'Unnamed: 12', 'Unnamed: 13', 'Unnamed: 6', 'Unnamed: 7']
         df = df.drop(columns=[col for col in unwanted_columns if col in df.columns], errors='ignore')
 
         # Translate certain fields
@@ -270,25 +276,21 @@ def mapping(request):
             df['sent_follow_up'] = df['sent_follow_up'].apply(
                 lambda x: True if x.lower() == 'yes' else False if x.lower() == 'no' else x)
 
-        # Filter the dictionary keys based on the fields of your `Account` model
-        valid_fields = [field.name for field in VendorModel._meta.get_fields()]
+        # Filter the dictionary keys based on the fields of your `VendorModel`
+        valid_fields = [field.name for field in VendorModel._meta.get_fields() if not field.name.startswith('Unnamed')]
+        entity_slug = EntityModel.objects.for_user(user_model=request.user).first().slug
+        entity_model = get_object_or_404(EntityModel, slug=entity_slug)
 
         for _, row in df.iterrows():
             row_dict = row.to_dict()
             filtered_dict = {key: value for key, value in row_dict.items() if key in valid_fields}
 
             # Add the user to the filtered_dict
-            filtered_dict['user'] = request.user
+            entity_slug = EntityModel.objects.for_user(user_model=request.user).first().slug
+            print(f"\n\n{entity_slug}\n\n")
+            filtered_dict['entity_model'] = entity_model
 
             VendorModel.objects.create(**filtered_dict)
 
-        return redirect('vendor:vendor-list')  # Updated namespace
-    context = {
-        'fields': fields,
-    }
-    return render(request, 'django_ledger/vendor/mapping.html', context)
-    # return redirect('vendor:vendor-list')  # Updated namespace
-
-
-
-
+        messages.success(request, 'Your file has been uploaded.')
+        return HttpResponseRedirect(request.path)
